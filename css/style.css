@@ -38,25 +38,9 @@
                        #edf2f7;
 
   --bg-canvas: light-dark(var(--bg-gradient-light), var(--bg-gradient-dark));
-}
 
-[data-theme="light"],
-:root:has(> head > meta[name="color-scheme"][content="light"]) {
-  color-scheme: light;
-  --text-primary: #0f172a;
-  --text-secondary: #334155;
-  --text-muted: #64748b;
-  --bg-canvas: var(--bg-gradient-light);
-}
-
-[data-theme="dark"],
-:root:has(> head > meta[name="color-scheme"][content="dark"]) {
-  color-scheme: dark;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --bg-canvas: var(--bg-gradient-dark);
-}
+  /* Topbar Shadows */
+  --topbar-shadow: 0 8px 30px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 
   /* Layout dimensions */
   --sidebar-width: 280px;
@@ -75,6 +59,26 @@
   /* Scrollbar configuration */
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+[data-theme="light"],
+:root:has(> head > meta[name="color-scheme"][content="light"]) {
+  color-scheme: light;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --bg-canvas: var(--bg-gradient-light);
+  --topbar-shadow: 0 4px 16px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="dark"],
+:root:has(> head > meta[name="color-scheme"][content="dark"]) {
+  color-scheme: dark;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --bg-canvas: var(--bg-gradient-dark);
+  --topbar-shadow: 0 8px 30px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* Base Reset & Typography */
@@ -96,6 +100,53 @@ html, body {
   overflow: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Smooth Theme Transitions on All UI Surfaces */
+.topbar,
+.sidebar,
+.question-card,
+.summary-container,
+.summary-hero-card,
+.summary-stat-card,
+.matrix-row-item,
+.modal-card,
+.btn-glass,
+.option-item,
+.tf-statement-row,
+.metric-pill,
+.glass-tag,
+.glass-panel,
+.glass-panel-elevated,
+.model-answer-card,
+.self-eval-box {
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease;
+}
+
+/* Smooth Real-Time Transitions for Text Elements */
+.option-label,
+.matrix-q-text,
+.question-text,
+.brand-title h1,
+.sidebar-title,
+.question-grid-title,
+.metric-pill .metric-val,
+.metric-pill .metric-name,
+.q-btn,
+.summary-stat-card .val,
+.summary-stat-card .label,
+.matrix-q-info span,
+.topbar-progress-box .progress-label,
+.summary-matrix-section h3,
+.summary-matrix-section p,
+.summary-filter-select,
+.summary-badge-title,
+.katex {
+  transition: color 0.3s ease;
 }
 
 html::-webkit-scrollbar,
@@ -214,9 +265,13 @@ body::-webkit-scrollbar {
   -webkit-backdrop-filter: var(--glass-blur-lg);
   border: 1px solid var(--glass-border-subtle);
   color: var(--text-primary);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: var(--topbar-shadow);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease,
+              transform var(--transition-fast);
 }
 
 .standalone-collapse-btn:hover {
@@ -259,7 +314,7 @@ body::-webkit-scrollbar {
   background: var(--glass-bg-base);
   backdrop-filter: var(--glass-blur-lg);
   -webkit-backdrop-filter: var(--glass-blur-lg);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: var(--topbar-shadow);
   position: relative;
   z-index: 100;
   flex-shrink: 0;
@@ -461,7 +516,13 @@ body::-webkit-scrollbar {
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  transition: opacity var(--transition-normal), transform var(--transition-normal), visibility var(--transition-normal);
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease,
+              opacity var(--transition-normal),
+              transform var(--transition-normal),
+              visibility var(--transition-normal);
   overflow: hidden;
   z-index: 50;
   flex-shrink: 0;
@@ -496,6 +557,7 @@ body::-webkit-scrollbar {
   justify-content: space-between;
   border-bottom: 1px solid var(--glass-border-subtle);
   flex-shrink: 0;
+  transition: border-color 0.3s ease;
 }
 
 .sidebar-title {
@@ -507,6 +569,7 @@ body::-webkit-scrollbar {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color 0.3s ease;
 }
 
 .sidebar-metrics-panel {
@@ -518,18 +581,21 @@ body::-webkit-scrollbar {
 }
 
 .metric-pill {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-bg-pill);
   border: 1px solid var(--glass-border-subtle);
   border-radius: 16px;
   padding: 10px 14px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  transition: all var(--transition-fast);
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease;
 }
 
 .metric-pill:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--glass-bg-hover);
   border-color: var(--glass-border-highlight);
 }
 
@@ -539,6 +605,7 @@ body::-webkit-scrollbar {
   color: var(--text-primary);
   line-height: 1.1;
   letter-spacing: -0.01em;
+  transition: color 0.3s ease;
 }
 
 .metric-pill .metric-name {
@@ -547,6 +614,7 @@ body::-webkit-scrollbar {
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  transition: color 0.3s ease;
 }
 
 /* Question Grid in Sidebar */
@@ -565,6 +633,7 @@ body::-webkit-scrollbar {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 10px;
+  transition: color 0.3s ease;
 }
 
 .question-grid {
@@ -576,7 +645,7 @@ body::-webkit-scrollbar {
 .q-btn {
   aspect-ratio: 1;
   min-height: 42px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--glass-bg-pill);
   border: 1px solid var(--glass-border-subtle);
   border-radius: 13px;
   color: var(--text-secondary);
@@ -587,12 +656,16 @@ body::-webkit-scrollbar {
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: all var(--transition-fast);
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease,
+              transform var(--transition-fast);
 }
 
 .q-btn:hover {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.22);
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-highlight);
   color: var(--text-primary);
   transform: translateY(-2px);
 }
@@ -652,6 +725,7 @@ body::-webkit-scrollbar {
   padding: 14px 18px 16px;
   border-top: 1px solid var(--glass-border-subtle);
   flex-shrink: 0;
+  transition: border-color 0.3s ease;
 }
 
 .sidebar-summary-btn {
@@ -669,7 +743,11 @@ body::-webkit-scrollbar {
   border: 1px solid var(--glass-border-subtle);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease,
+              transform var(--transition-fast);
 }
 
 .sidebar-summary-btn:hover {
@@ -835,7 +913,8 @@ body::-webkit-scrollbar {
   align-items: center;
   gap: 16px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease, transform var(--transition-fast);
   user-select: none;
 }
 
@@ -863,7 +942,7 @@ body::-webkit-scrollbar {
   font-weight: 700;
   color: var(--text-secondary);
   flex-shrink: 0;
-  transition: all var(--transition-fast);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, transform var(--transition-fast);
 }
 
 .option-item.selected .option-indicator {
@@ -877,6 +956,8 @@ body::-webkit-scrollbar {
   font-size: 1rem;
   font-weight: 500;
   line-height: 1.4;
+  color: var(--text-primary);
+  transition: color 0.3s ease;
 }
 
 /* Option Verification Feedback States */
@@ -1085,13 +1166,20 @@ body::-webkit-scrollbar {
 /* Model Answer / Self Grading Reveal */
 .model-answer-card {
   padding: 20px;
-  background: rgba(30, 41, 59, 0.5);
+  background: var(--glass-bg-elevated);
   border: 1px solid var(--glass-border-medium);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
   gap: 14px;
   animation: fadeInQuestion 0.3s ease;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+[data-theme="light"] .model-answer-card {
+  background: rgba(248, 250, 252, 0.95);
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
 }
 
 .model-answer-header {
@@ -1101,6 +1189,10 @@ body::-webkit-scrollbar {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+[data-theme="light"] .model-answer-header {
+  color: #15803d;
 }
 
 .model-answer-body {
@@ -1126,11 +1218,19 @@ body::-webkit-scrollbar {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+[data-theme="light"] .self-eval-box {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
 }
 
 .self-eval-prompt {
   font-size: 0.9rem;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .self-eval-buttons {
@@ -1186,20 +1286,20 @@ body::-webkit-scrollbar {
 
 /* Summary / Results View */
 .summary-container {
-  padding: 36px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 20px;
   animation: fadeInQuestion 0.4s ease;
 }
 
 .summary-hero-card {
-  padding: 36px;
-  border-radius: 24px;
+  padding: 18px 24px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 20px;
   position: relative;
   overflow: hidden;
 }
@@ -1207,11 +1307,11 @@ body::-webkit-scrollbar {
 .summary-score-left {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .summary-badge-title {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1219,7 +1319,7 @@ body::-webkit-scrollbar {
 }
 
 .summary-score-large {
-  font-size: 3.5rem;
+  font-size: 2.5rem;
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.03em;
@@ -1242,17 +1342,21 @@ body::-webkit-scrollbar {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .summary-stat-card .val {
   font-size: 1.8rem;
   font-weight: 800;
+  transition: color 0.3s ease;
 }
 
 .summary-stat-card .label {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-secondary);
+  transition: color 0.3s ease;
 }
 
 /* Summary Review Grid */
@@ -1265,6 +1369,42 @@ body::-webkit-scrollbar {
 .summary-matrix-section h3 {
   font-size: 1.2rem;
   font-weight: 800;
+  color: var(--text-primary);
+  transition: color 0.3s ease;
+}
+
+.summary-filter-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--glass-bg-card);
+  border: 1px solid var(--glass-border-subtle);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.summary-filter-wrapper svg {
+  flex-shrink: 0;
+  color: var(--neon-cyan);
+}
+
+.summary-filter-select {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: color 0.3s ease;
+}
+
+.summary-filter-select option {
+  background: var(--bg-base);
+  color: var(--text-primary);
 }
 
 .matrix-grid {
@@ -1283,7 +1423,8 @@ body::-webkit-scrollbar {
   justify-content: space-between;
   gap: 16px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease, transform var(--transition-fast);
 }
 
 .matrix-row-item:hover {
@@ -1310,7 +1451,9 @@ body::-webkit-scrollbar {
   justify-content: center;
   font-weight: 800;
   font-size: 0.9rem;
+  color: var(--text-primary);
   flex-shrink: 0;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 .matrix-q-text {
@@ -1321,6 +1464,7 @@ body::-webkit-scrollbar {
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  transition: color 0.3s ease;
 }
 
 /* Modal for JSON Import */
@@ -1670,8 +1814,30 @@ body.zen-mode .question-card {
 }
 
 [data-theme="light"] body.zen-mode .question-card,
-[data-theme="light"] .question-card {
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+[data-theme="light"] .question-card,
+[data-theme="light"] .summary-container {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .topbar {
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .standalone-collapse-btn {
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .summary-hero-card {
+  box-shadow: 0 6px 18px rgba(6, 182, 212, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="light"] .sidebar {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03);
+  border-color: rgba(15, 23, 42, 0.08);
 }
 
 /* ==============================================================
@@ -1718,21 +1884,22 @@ body.zen-mode .question-card {
   overflow: hidden;
   margin: 12px 0 18px 0;
   position: relative;
+  transition: background-color 0.3s ease;
+}
+
+[data-theme="light"] .q-timer-track {
+  background: rgba(15, 23, 42, 0.08);
 }
 
 .q-timer-bar {
   height: 100%;
-  background: linear-gradient(90deg, var(--neon-emerald), var(--neon-lime));
+  background-color: #10b981;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(0, 0, 0, 0.1) 100%);
   border-radius: 999px;
-  transition: width 1s linear, background-color 0.4s ease;
-}
-
-.q-timer-bar.warning {
-  background: linear-gradient(90deg, var(--neon-amber), var(--neon-rose));
+  transition: width 0.05s linear;
 }
 
 .q-timer-bar.critical {
-  background: var(--neon-rose);
   box-shadow: 0 0 10px var(--neon-rose-glow);
 }
 
@@ -1767,6 +1934,80 @@ body.zen-mode .question-card {
 
 .timeout-alert-banner svg {
   flex-shrink: 0;
+}
+
+/* Full Page Blur when Paused or Settings Modal is Open */
+body.modal-open .app-layout,
+body.quiz-paused .app-layout {
+  filter: blur(14px);
+  pointer-events: none;
+  transition: filter 0.25s ease;
+}
+
+/* Pause Resume Overlay for Time Pressure */
+.pause-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: rgba(10, 14, 23, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  animation: fadeIn 0.25s ease-out;
+  user-select: none;
+}
+
+[data-theme="light"] .pause-overlay {
+  background: rgba(241, 245, 249, 0.7);
+}
+
+.pause-card {
+  padding: 36px 52px;
+  border-radius: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--glass-border-medium);
+  background: var(--glass-bg-card);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.pause-overlay:hover .pause-card {
+  transform: scale(1.03);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+
+.pause-icon-pulse {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(34, 211, 238, 0.15);
+  border: 1.5px solid var(--neon-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neon-cyan);
+  animation: criticalPulse 1.5s infinite alternate ease-in-out;
+  margin-bottom: 2px;
+}
+
+.pause-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.pause-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 /* Keybind badge */

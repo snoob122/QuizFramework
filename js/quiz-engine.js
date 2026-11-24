@@ -98,12 +98,11 @@ class QuizEngine {
   }
 
   getQuizDefaultTime() {
-    if (typeof this.config.defaultQuestionTime === "number" && this.config.defaultQuestionTime > 0) {
-      return Math.round(this.config.defaultQuestionTime);
-    }
     if (this.questions.length === 0) return 20;
     const sum = this.questions.reduce((acc, q) => acc + this.calculateEstimatedTime(q), 0);
-    return Math.max(10, Math.round(sum / this.questions.length));
+    const avg = sum / this.questions.length;
+    // Single time limit for every question: 5% higher than the average time of all questions
+    return Math.max(5, Math.round(avg * 1.05));
   }
 
   getActiveTimePressureSeconds() {
@@ -129,11 +128,11 @@ class QuizEngine {
     }
 
     if (userVal < defaultTime) {
-      feedbackEl.innerHTML = `<span style="color: var(--neon-amber); font-weight: 600;">⚠️ ${isVn ? `${userVal}s thấp hơn ước tính (${defaultTime}s) — bài thi sẽ khó hơn nhiều!` : `${userVal}s is lower than estimated (${defaultTime}s) — much harder!`}</span>`;
+      feedbackEl.innerHTML = `<span style="color: var(--neon-amber); font-weight: 600;">⚠️ ${isVn ? `${userVal}s thấp hơn thời gian chuẩn (${defaultTime}s) — bài thi sẽ khó hơn nhiều!` : `${userVal}s is lower than standard limit (${defaultTime}s) — much harder!`}</span>`;
     } else if (userVal > defaultTime) {
-      feedbackEl.innerHTML = `<span style="color: var(--neon-cyan); font-weight: 500;">ℹ️ ${isVn ? `${userVal}s cao hơn ước tính (${defaultTime}s) — bài thi sẽ bớt thử thách hơn.` : `${userVal}s is higher than estimated (${defaultTime}s) — not as challenging.`}</span>`;
+      feedbackEl.innerHTML = `<span style="color: var(--neon-cyan); font-weight: 500;">ℹ️ ${isVn ? `${userVal}s cao hơn thời gian chuẩn (${defaultTime}s) — bài thi sẽ bớt thử thách hơn.` : `${userVal}s is higher than standard limit (${defaultTime}s) — not as challenging.`}</span>`;
     } else {
-      feedbackEl.innerHTML = `<span style="color: var(--neon-emerald); font-weight: 500;">✓ ${isVn ? `Trùng khớp với thời gian chuẩn AI ước tính (${defaultTime}s/câu).` : `Balanced standard AI estimated pace (${defaultTime}s/question).`}</span>`;
+      feedbackEl.innerHTML = `<span style="color: var(--neon-emerald); font-weight: 500;">✓ ${isVn ? `Trùng khớp với thời gian chuẩn (${defaultTime}s/câu).` : `Balanced standard pace (${defaultTime}s/question).`}</span>`;
     }
   }
 
@@ -284,6 +283,14 @@ class QuizEngine {
     const modal = document.getElementById("settingsModal");
     if (modal) {
       modal.classList.add("active");
+      document.body.classList.add("modal-open");
+
+      // Pause question countdown timer while in settings
+      if (this.settings.timePressure && this.userAnswers[this.currentIndex] && !this.userAnswers[this.currentIndex].checked) {
+        this.clearQuestionTimer();
+        this.isPausedForModal = true;
+      }
+
       const showTypeSwitch = document.getElementById("settingShowType");
       if (showTypeSwitch) showTypeSwitch.checked = !!this.settings.showQuestionType;
       const instantCheckSwitch = document.getElementById("settingInstantCheck");
@@ -309,6 +316,45 @@ class QuizEngine {
     if (modal) {
       modal.classList.remove("active");
     }
+    document.body.classList.remove("modal-open");
+
+    if (this.isPausedForModal) {
+      this.isPausedForModal = false;
+      if (this.settings.timePressure && this.userAnswers[this.currentIndex] && !this.userAnswers[this.currentIndex].checked) {
+        this.showResumeOverlay();
+      }
+    }
+  }
+
+  showResumeOverlay() {
+    const overlay = document.getElementById("pauseResumeOverlay");
+    if (!overlay) {
+      if (this.settings.timePressure && this.userAnswers[this.currentIndex] && !this.userAnswers[this.currentIndex].checked) {
+        this.startQuestionTimer(this.currentIndex);
+      }
+      return;
+    }
+
+    const isVn = (this.config.category && /kinh tế|tiếng việt/i.test(this.config.category)) || 
+                 (this.config.title && /kinh tế|chương|đề/i.test(this.config.title));
+    const titleEl = document.getElementById("pauseTitle");
+    const subEl = document.getElementById("pauseSubtitle");
+    if (titleEl) titleEl.textContent = isVn ? "Nhấp để Tiếp Tục" : "Click to Continue";
+    if (subEl) subEl.textContent = isVn ? "Đồng hồ sẽ tiếp tục đếm ngược" : "Timer will resume counting down";
+
+    overlay.style.display = "flex";
+    document.body.classList.add("quiz-paused");
+  }
+
+  hideResumeOverlayAndContinue() {
+    const overlay = document.getElementById("pauseResumeOverlay");
+    if (overlay) {
+      overlay.style.display = "none";
+    }
+    document.body.classList.remove("quiz-paused");
+    if (this.settings.timePressure && this.userAnswers[this.currentIndex] && !this.userAnswers[this.currentIndex].checked) {
+      this.startQuestionTimer(this.currentIndex);
+    }
   }
 
   initUserAnswers() {
@@ -316,6 +362,7 @@ class QuizEngine {
       id: q.id,
       checked: false,
       timedOut: false,
+      remainingMs: null,
       selectedOptions: [], // Array of option indices
       tfAnswers: {}, // Map statement index -> boolean
       essayText: "",
@@ -329,8 +376,16 @@ class QuizEngine {
       clearInterval(this.questionTimerInterval);
       this.questionTimerInterval = null;
     }
-    const topBadge = document.getElementById("topbarQuestionTimerBadge");
-    if (topBadge) topBadge.style.display = "none";
+    if (typeof this.currentQuestionTimerIndex === "number") {
+      const state = this.userAnswers[this.currentQuestionTimerIndex];
+      if (state && !state.checked && this.questionTimerStartTime) {
+        const elapsed = Date.now() - this.questionTimerStartTime;
+        state.remainingMs = Math.max(0, this.questionTimerInitialRemainingMs - elapsed);
+        this.questionSecondsRemaining = Math.ceil(state.remainingMs / 1000);
+      }
+      this.currentQuestionTimerIndex = null;
+      this.questionTimerStartTime = null;
+    }
   }
 
   startQuestionTimer(index) {
@@ -340,56 +395,60 @@ class QuizEngine {
     if (!state || state.checked) return;
 
     const totalSec = this.getActiveTimePressureSeconds();
-    this.questionSecondsRemaining = totalSec;
+    const totalMs = totalSec * 1000;
 
-    const topBadge = document.getElementById("topbarQuestionTimerBadge");
-    if (topBadge) topBadge.style.display = "inline-flex";
+    const initialRemainingMs = (typeof state.remainingMs === "number" && state.remainingMs > 0)
+      ? state.remainingMs
+      : totalMs;
 
-    this.updateQuestionTimerDisplay(totalSec);
+    this.currentQuestionTimerIndex = index;
+    this.questionTimerStartTime = Date.now();
+    this.questionTimerInitialRemainingMs = initialRemainingMs;
+    this.questionSecondsRemaining = Math.ceil(initialRemainingMs / 1000);
+
+    this.updateQuestionTimerDisplay(initialRemainingMs, totalMs);
 
     this.questionTimerInterval = setInterval(() => {
-      this.questionSecondsRemaining--;
-      this.updateQuestionTimerDisplay(totalSec);
+      const elapsed = Date.now() - this.questionTimerStartTime;
+      const remainingMs = Math.max(0, this.questionTimerInitialRemainingMs - elapsed);
+      state.remainingMs = remainingMs;
+      this.questionSecondsRemaining = Math.ceil(remainingMs / 1000);
 
-      if (this.questionSecondsRemaining <= 0) {
+      this.updateQuestionTimerDisplay(remainingMs, totalMs);
+
+      if (remainingMs <= 0) {
         this.clearQuestionTimer();
+        state.remainingMs = 0;
         this.handleQuestionTimeout(index);
       }
-    }, 1000);
+    }, 50);
   }
 
-  updateQuestionTimerDisplay(totalSec = null) {
-    const total = totalSec || this.getActiveTimePressureSeconds();
-    const rem = this.questionSecondsRemaining;
-    const isCritical = rem <= 5;
+  updateQuestionTimerDisplay(remainingMs = null, totalMs = null) {
+    const total = totalMs || (this.getActiveTimePressureSeconds() * 1000);
+    const remMs = typeof remainingMs === "number" ? remainingMs : (this.questionSecondsRemaining * 1000);
+    const remSec = Math.ceil(remMs / 1000);
+    const pct = Math.max(0, Math.min(100, (remMs / total) * 100));
+    const isCritical = pct <= 20;
 
-    // 1. Topbar Badge
-    const topDisplay = document.getElementById("topbarQuestionTimerDisplay");
-    const topBadge = document.getElementById("topbarQuestionTimerBadge");
-    if (topDisplay) {
-      topDisplay.textContent = `${rem}s`;
-    }
-    if (topBadge) {
-      topBadge.classList.toggle("tag-pulse-critical", isCritical);
-    }
-
-    // 2. In-Card Tag
+    // 1. In-Card Tag
     const qTimerNum = document.getElementById("qTimerNum");
     const qTimerTag = document.getElementById("qTimerTag");
     if (qTimerNum) {
-      qTimerNum.textContent = `${rem}`;
+      qTimerNum.textContent = `${remSec}`;
     }
     if (qTimerTag) {
       qTimerTag.classList.toggle("tag-pulse-critical", isCritical);
     }
 
-    // 3. In-Card Progress Bar
+    // 2. In-Card Progress Bar
     const qTimerBar = document.getElementById("qTimerBar");
     if (qTimerBar) {
-      const pct = Math.max(0, Math.min(100, (rem / total) * 100));
       qTimerBar.style.width = `${pct}%`;
-      qTimerBar.classList.toggle("warning", rem <= 10 && rem > 5);
-      qTimerBar.classList.toggle("critical", rem <= 5);
+      const hue = Math.round((pct / 100) * 120);
+      qTimerBar.style.backgroundColor = `hsl(${hue}, 85%, 48%)`;
+      qTimerBar.classList.toggle("warning", pct <= 50 && pct > 20);
+      qTimerBar.classList.toggle("critical", isCritical);
     }
   }
 
@@ -618,23 +677,22 @@ class QuizEngine {
     const cleanQuestionText = this.getCleanQuestionText(q.question);
     const formattedQuestionText = this.formatMarkdown(cleanQuestionText);
 
-    const activeSec = this.getActiveTimePressureSeconds();
+    const activeTotalMs = this.getActiveTimePressureSeconds() * 1000;
+    const initialRemMs = (state && typeof state.remainingMs === "number" && state.remainingMs > 0)
+      ? state.remainingMs
+      : activeTotalMs;
+    const activeSec = Math.ceil(initialRemMs / 1000);
+
     const timePressureTag = this.settings.timePressure && !state.checked
       ? `<span class="glass-tag tag-rose" id="qTimerTag" title="Time remaining for this question">⏱ <span id="qTimerNum">${activeSec}</span>s</span>`
       : "";
 
+    const initialBarPct = Math.max(0, Math.min(100, (initialRemMs / activeTotalMs) * 100));
+    const initialHue = Math.round((initialBarPct / 100) * 120);
+    const initialBgColor = `hsl(${initialHue}, 85%, 48%)`;
+    const initialIsCritical = initialBarPct <= 20;
     const timerBarHtml = this.settings.timePressure && !state.checked
-      ? `<div class="q-timer-track"><div class="q-timer-bar" id="qTimerBar" style="width: 100%;"></div></div>`
-      : "";
-
-    const timeoutAlertHtml = state.timedOut
-      ? `<div class="timeout-alert-banner">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 14 10"></polyline>
-          </svg>
-          <span>${isVn ? "Hết thời gian! Bạn chưa chọn đáp án đúng kịp thời gian quy định." : "Time's up! You did not complete this question in time."}</span>
-        </div>`
+      ? `<div class="q-timer-track"><div class="q-timer-bar ${initialIsCritical ? "critical" : ""}" id="qTimerBar" style="width: ${initialBarPct}%; background-color: ${initialBgColor};"></div></div>`
       : "";
 
     const html = `
@@ -656,7 +714,6 @@ class QuizEngine {
           </div>
 
           ${timerBarHtml}
-          ${timeoutAlertHtml}
 
           <h2 class="question-text">${formattedQuestionText}</h2>
 
@@ -1122,7 +1179,16 @@ class QuizEngine {
     } else {
       this.flagged.add(index);
     }
-    this.renderQuestion(this.currentIndex);
+    const flagBtn = document.getElementById("flagBtn");
+    if (flagBtn) {
+      const isFlagged = this.flagged.has(index);
+      flagBtn.classList.toggle("flagged", isFlagged);
+      const svg = flagBtn.querySelector("svg");
+      if (svg) svg.setAttribute("fill", isFlagged ? "currentColor" : "none");
+      const span = flagBtn.querySelector("span");
+      if (span) span.textContent = isFlagged ? "Flagged" : "Flag";
+    }
+    this.updateProgress();
   }
 
   previousQuestion() {
@@ -1160,13 +1226,16 @@ class QuizEngine {
     const pendingEssay = this.userAnswers.filter((a) => a.checked && a.isCorrect === null).length;
     const timedOutCount = this.userAnswers.filter((a) => a.timedOut).length;
     const unanswered = total - answered;
+    const flaggedCount = this.flagged.size;
 
     const accuracyPercent = total > 0 ? Math.round((correct / total) * 100) : 0;
-    const isPassing = accuracyPercent >= (this.config.passingScore || 70);
 
-    const questionsToDisplay = this.filterMode === "incorrect"
-      ? this.questions.map((q, i) => ({ q, i })).filter(({ i }) => this.userAnswers[i].isCorrect === false)
-      : this.questions.map((q, i) => ({ q, i }));
+    let questionsToDisplay = this.questions.map((q, i) => ({ q, i }));
+    if (this.filterMode === "incorrect") {
+      questionsToDisplay = questionsToDisplay.filter(({ i }) => this.userAnswers[i].isCorrect === false);
+    } else if (this.filterMode === "flagged") {
+      questionsToDisplay = questionsToDisplay.filter(({ i }) => this.flagged.has(i));
+    }
 
     const html = `
       <div class="content-wrapper">
@@ -1174,27 +1243,21 @@ class QuizEngine {
           
           <div class="summary-hero-card glass-banner-gradient">
             <div class="summary-score-left">
-              <span class="summary-badge-title">Official Results Breakdown</span>
+              <span class="summary-badge-title">Result</span>
               <div class="summary-score-large">${accuracyPercent}%</div>
-              <p style="font-size: 1.05rem; opacity: 0.95; font-weight: 600;">
-                ${isPassing ? "🏆 Congratulations! You Passed the Assessment" : "📚 Keep Practicing to Reinforce Knowledge"}
-              </p>
-              <p style="font-size: 0.88rem; opacity: 0.8;">
+              <p style="font-size: 0.95rem; opacity: 0.88; font-weight: 500; margin-top: 4px;">
                 ${correct} out of ${total} Questions Answered Correctly (Passing threshold: ${this.config.passingScore}%)
               </p>
             </div>
             
             <div style="text-align: right; display: flex; flex-direction: column; gap: 8px;">
               <span class="glass-tag" style="background: rgba(0, 0, 0, 0.25); border-color: rgba(255, 255, 255, 0.3);">
-                ⏱ Time Spent: ${this.formatTime(this.elapsedSeconds)}
+                Time Spent: ${this.formatTime(this.elapsedSeconds)}
               </span>
               <span class="glass-tag" style="background: rgba(0, 0, 0, 0.25); border-color: rgba(255, 255, 255, 0.3);">
-                ⚡ Time Pressure: ${this.settings.timePressure ? `Active (${this.getActiveTimePressureSeconds()}s/Q)` : "Off"}
+                Time Pressure: ${this.settings.timePressure ? `Active (${this.getActiveTimePressureSeconds()}s/Q)` : "Off"}
               </span>
-              ${timedOutCount > 0 ? `<span class="glass-tag tag-rose" style="background: rgba(244, 63, 94, 0.2);">⏰ Timed Out: ${timedOutCount} Qs</span>` : ""}
-              <span class="glass-tag" style="background: rgba(0, 0, 0, 0.25); border-color: rgba(255, 255, 255, 0.3);">
-                🚩 Flagged: ${this.flagged.size} Questions
-              </span>
+              ${timedOutCount > 0 ? `<span class="glass-tag tag-rose" style="background: rgba(244, 63, 94, 0.2);">Timed Out: ${timedOutCount} Qs</span>` : ""}
             </div>
           </div>
 
@@ -1220,22 +1283,21 @@ class QuizEngine {
 
           <!-- Filter & Action Controls -->
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-            <div style="display: flex; gap: 8px;">
-              <button type="button" class="btn-glass ${this.filterMode === "all" ? "active" : ""}" id="filterAllBtn">
-                All Questions (${total})
-              </button>
-              <button type="button" class="btn-glass ${this.filterMode === "incorrect" ? "active" : ""}" id="filterIncorrectBtn" style="color: var(--neon-rose);">
-                Review Incorrect Only (${incorrect})
-              </button>
+            <div class="summary-filter-wrapper">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+              <select id="summaryFilterSelect" class="summary-filter-select" aria-label="Filter Questions">
+                <option value="all" ${this.filterMode === "all" ? "selected" : ""}>Display All Questions (${total})</option>
+                <option value="incorrect" ${this.filterMode === "incorrect" ? "selected" : ""}>Display Only Incorrect (${incorrect})</option>
+                <option value="flagged" ${this.filterMode === "flagged" ? "selected" : ""}>Display Flagged Questions (${flaggedCount})</option>
+              </select>
             </div>
 
-            <div style="display: flex; gap: 10px;">
-              <button type="button" class="btn-glass" id="retakeBtn">
-                🔄 Retake Quiz
-              </button>
-              <button type="button" class="btn-neon-lime" id="importNewQuizBtn">
-                📥 Load Custom AI Quiz
-              </button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <button type="button" class="btn-glass" id="summaryExportBtn">Export Review</button>
+              <button type="button" class="btn-glass" id="retakeBtn">Retake Quiz</button>
+              <button type="button" class="btn-neon-lime" id="importNewQuizBtn">Load Custom AI Quiz</button>
             </div>
           </div>
 
@@ -1257,9 +1319,9 @@ class QuizEngine {
 
                         if (st.checked) {
                           if (st.isCorrect === true) {
-                            statusTag = `<span class="glass-tag tag-lime">✓ Correct</span>`;
+                            statusTag = `<span class="glass-tag tag-lime">Correct</span>`;
                           } else if (st.isCorrect === false) {
-                            statusTag = `<span class="glass-tag tag-rose">✗ Incorrect</span>`;
+                            statusTag = `<span class="glass-tag tag-rose">Incorrect</span>`;
                           } else {
                             statusTag = `<span class="glass-tag tag-amber">Pending Self-Grade</span>`;
                           }
@@ -1288,7 +1350,7 @@ class QuizEngine {
                           </div>
                           
                           <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
-                            ${isFlag ? `<span class="glass-tag tag-amber" title="Flagged">🚩 Flagged</span>` : ""}
+                            ${isFlag ? `<span class="glass-tag tag-amber" title="Flagged">Flagged</span>` : ""}
                             ${statusTag}
                             <span style="font-size: 0.85rem; color: var(--text-secondary);">Review →</span>
                           </div>
@@ -1321,18 +1383,18 @@ class QuizEngine {
       });
     });
 
-    const filterAllBtn = document.getElementById("filterAllBtn");
-    const filterIncorrectBtn = document.getElementById("filterIncorrectBtn");
-    if (filterAllBtn) {
-      filterAllBtn.addEventListener("click", () => {
-        this.filterMode = "all";
+    const summaryFilterSelect = document.getElementById("summaryFilterSelect");
+    if (summaryFilterSelect) {
+      summaryFilterSelect.addEventListener("change", (e) => {
+        this.filterMode = e.target.value;
         this.showSummary();
       });
     }
-    if (filterIncorrectBtn) {
-      filterIncorrectBtn.addEventListener("click", () => {
-        this.filterMode = "incorrect";
-        this.showSummary();
+
+    const summaryExportBtn = document.getElementById("summaryExportBtn");
+    if (summaryExportBtn) {
+      summaryExportBtn.addEventListener("click", () => {
+        this.exportCurrentQuiz();
       });
     }
 
@@ -1371,6 +1433,64 @@ class QuizEngine {
     }
   }
 
+  exportCurrentQuiz() {
+    try {
+      const payload = {
+        version: 1,
+        exportType: "quizframework_review",
+        exportedAt: new Date().toISOString(),
+        config: this.config,
+        questions: this.questions,
+        userAnswers: this.userAnswers,
+        flagged: Array.from(this.flagged),
+        elapsedSeconds: this.elapsedSeconds
+      };
+
+      const dataStr = JSON.stringify(payload, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeTitle = (this.config && this.config.title)
+        ? this.config.title.toLowerCase().replace(/[^a-z0-9_-]/g, "_").slice(0, 30)
+        : "quiz";
+      a.href = url;
+      a.download = `${safeTitle}-review-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Failed to export quiz: " + err.message);
+    }
+  }
+
+  async downloadInstructionFile() {
+    try {
+      const response = await fetch("instruction.md");
+      if (response.ok) {
+        const text = await response.text();
+        const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "instruction.md";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+    } catch (e) {
+      console.warn("Fetch instruction.md failed, using direct download link", e);
+    }
+    const a = document.createElement("a");
+    a.href = "instruction.md";
+    a.download = "instruction.md";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
   importCustomQuiz(rawInput) {
     try {
       if (!rawInput || !rawInput.trim()) {
@@ -1405,6 +1525,29 @@ class QuizEngine {
 
       if (!data) {
         throw new Error("Could not extract questions from input. Make sure it provides an array of questions or window.QUIZ_QUESTIONS.");
+      }
+
+      // Check if importing a previously exported review dataset
+      if (data.exportType === "quizframework_review" || (Array.isArray(data.userAnswers) && Array.isArray(data.questions))) {
+        this.questions = data.questions;
+        if (data.config) {
+          this.config = { ...this.config, ...data.config };
+        }
+        this.userAnswers = data.userAnswers;
+        this.flagged = new Set(Array.isArray(data.flagged) ? data.flagged : []);
+        this.elapsedSeconds = typeof data.elapsedSeconds === "number" ? data.elapsedSeconds : 0;
+        this.closeImportModal();
+        this.renderHeader();
+        this.renderSidebar();
+        this.updateProgress();
+
+        const allChecked = this.userAnswers.length > 0 && this.userAnswers.every((a) => a.checked);
+        if (allChecked) {
+          this.showSummary();
+        } else {
+          this.jumpToQuestion(0);
+        }
+        return;
       }
 
       if (Array.isArray(data)) {
@@ -1459,11 +1602,27 @@ class QuizEngine {
       });
     }
 
+    // Top Export Quiz Button
+    const topExportBtn = document.getElementById("topExportBtn");
+    if (topExportBtn) {
+      topExportBtn.addEventListener("click", () => {
+        this.exportCurrentQuiz();
+      });
+    }
+
     // Top Import Quiz Button
     const topImportBtn = document.getElementById("topImportBtn");
     if (topImportBtn) {
       topImportBtn.addEventListener("click", () => {
         this.openImportModal();
+      });
+    }
+
+    // Download instruction.md Button
+    const downloadInstructionBtn = document.getElementById("downloadInstructionBtn");
+    if (downloadInstructionBtn) {
+      downloadInstructionBtn.addEventListener("click", () => {
+        this.downloadInstructionFile();
       });
     }
 
@@ -1554,72 +1713,104 @@ class QuizEngine {
       });
     }
 
-    const settingShowType = document.getElementById("settingShowType");
-    if (settingShowType) {
-      settingShowType.addEventListener("change", (e) => {
-        this.settings.showQuestionType = e.target.checked;
-        this.saveSettings();
-      });
+    const cancelSettingsBtn = document.getElementById("cancelSettingsBtn");
+    if (cancelSettingsBtn) {
+      cancelSettingsBtn.addEventListener("click", () => this.closeSettingsModal());
     }
 
-    const settingInstantCheck = document.getElementById("settingInstantCheck");
-    if (settingInstantCheck) {
-      settingInstantCheck.addEventListener("change", (e) => {
-        this.settings.instantCheck = e.target.checked;
-        this.saveSettings();
-      });
-    }
-
-    const settingZenMode = document.getElementById("settingZenMode");
-    if (settingZenMode) {
-      settingZenMode.addEventListener("change", (e) => {
-        this.settings.zenMode = e.target.checked;
-        this.saveSettings();
-      });
-    }
-
-    // Setting: Time Pressure
+    // Toggle Time Pressure Config Box visibility in Settings without prompt
     const settingTimePressure = document.getElementById("settingTimePressure");
     if (settingTimePressure) {
       settingTimePressure.addEventListener("change", (e) => {
-        const isEnabling = e.target.checked;
-        const isVn = (this.config.category && /kinh tế|tiếng việt/i.test(this.config.category)) || 
-                     (this.config.title && /kinh tế|chương|đề/i.test(this.config.title));
+        const configBox = document.getElementById("timePressureConfigBox");
+        if (configBox) configBox.style.display = e.target.checked ? "block" : "none";
+      });
+    }
 
-        const promptText = isEnabling
-          ? (isVn 
-              ? "⚠️ Bật Chế độ Áp lực Thời gian sẽ bắt đầu lại bài thi từ đầu. Tất cả câu trả lời trước đó sẽ được làm mới.\n\nBạn có muốn tiếp tục không?"
-              : "⚠️ Enabling Time Pressure will restart the quiz from the beginning. All existing answers will be reset.\n\nDo you want to proceed?")
-          : (isVn
-              ? "⚠️ Tắt Chế độ Áp lực Thời gian sẽ bắt đầu lại bài thi từ đầu. Tất cả câu trả lời trước đó sẽ được làm mới.\n\nBạn có muốn tiếp tục không?"
-              : "⚠️ Turning off Time Pressure will restart the quiz from the beginning. All existing answers will be reset.\n\nDo you want to proceed?");
+    // Input changes (typing, up/down arrows) update feedback without prompting
+    const settingTimePressureSeconds = document.getElementById("settingTimePressureSeconds");
+    if (settingTimePressureSeconds) {
+      settingTimePressureSeconds.addEventListener("input", () => {
+        this.updateTimePressureFeedback();
+      });
+    }
 
-        const accepted = confirm(promptText);
-        if (accepted) {
-          this.settings.timePressure = isEnabling;
-          if (isEnabling && !this.settings.timePressureSeconds) {
-            this.settings.timePressureSeconds = this.getQuizDefaultTime();
+    // Reset button resets input value without prompting
+    const resetTimePressureBtn = document.getElementById("resetTimePressureBtn");
+    if (resetTimePressureBtn) {
+      resetTimePressureBtn.addEventListener("click", () => {
+        const defaultTime = this.getQuizDefaultTime();
+        const inputEl = document.getElementById("settingTimePressureSeconds");
+        if (inputEl) inputEl.value = defaultTime;
+        this.updateTimePressureFeedback();
+      });
+    }
+
+    // Apply Button: Applies all settings at once
+    const applySettingsBtn = document.getElementById("applySettingsBtn");
+    if (applySettingsBtn) {
+      applySettingsBtn.addEventListener("click", () => {
+        const showTypeSwitch = document.getElementById("settingShowType");
+        const instantCheckSwitch = document.getElementById("settingInstantCheck");
+        const zenSwitch = document.getElementById("settingZenMode");
+        const timePressureSwitch = document.getElementById("settingTimePressure");
+        const timePressureSecInput = document.getElementById("settingTimePressureSeconds");
+
+        const newShowType = showTypeSwitch ? showTypeSwitch.checked : this.settings.showQuestionType;
+        const newInstantCheck = instantCheckSwitch ? instantCheckSwitch.checked : this.settings.instantCheck;
+        const newZenMode = zenSwitch ? zenSwitch.checked : this.settings.zenMode;
+        const newTimePressure = timePressureSwitch ? timePressureSwitch.checked : this.settings.timePressure;
+        let newSec = timePressureSecInput ? parseInt(timePressureSecInput.value, 10) : this.getActiveTimePressureSeconds();
+        if (isNaN(newSec) || newSec <= 0) {
+          newSec = this.getQuizDefaultTime();
+        }
+
+        const timePressureChanged = (newTimePressure !== this.settings.timePressure) ||
+          (newTimePressure && newSec !== this.getActiveTimePressureSeconds());
+
+        if (timePressureChanged) {
+          const isVn = (this.config.category && /kinh tế|tiếng việt/i.test(this.config.category)) || 
+                       (this.config.title && /kinh tế|chương|đề/i.test(this.config.title));
+          const promptText = isVn
+            ? "⚠️ Thay đổi Chế độ Áp lực Thời gian sẽ bắt đầu lại bài thi từ đầu. Tất cả câu trả lời trước đó sẽ được làm mới.\n\nBạn có muốn tiếp tục không?"
+            : "⚠️ Applying these Time Pressure changes will restart the quiz from the beginning. All existing answers will be reset.\n\nDo you want to proceed?";
+
+          const accepted = confirm(promptText);
+          if (!accepted) {
+            return;
           }
+
+          this.settings.showQuestionType = newShowType;
+          this.settings.instantCheck = newInstantCheck;
+          this.settings.zenMode = newZenMode;
+          this.settings.timePressure = newTimePressure;
+          this.settings.timePressureSeconds = newSec;
           this.saveSettings();
+          this.applySettings();
+          this.isPausedForModal = false;
+          this.closeSettingsModal();
           this.restartQuizFromBeginning();
-          const configBox = document.getElementById("timePressureConfigBox");
-          if (configBox) configBox.style.display = isEnabling ? "block" : "none";
+
+          if (this.settings.timePressure) {
+            this.showResumeOverlay();
+          }
         } else {
-          // Revert toggle
-          e.target.checked = !isEnabling;
+          this.settings.showQuestionType = newShowType;
+          this.settings.instantCheck = newInstantCheck;
+          this.settings.zenMode = newZenMode;
+          this.saveSettings();
+          this.applySettings();
+          this.renderQuestion(this.currentIndex);
+          this.closeSettingsModal();
         }
       });
     }
 
-    const settingTimePressureSeconds = document.getElementById("settingTimePressureSeconds");
-    if (settingTimePressureSeconds) {
-      settingTimePressureSeconds.addEventListener("input", (e) => {
-        const val = parseInt(e.target.value, 10);
-        if (!isNaN(val) && val > 0) {
-          this.settings.timePressureSeconds = val;
-          this.saveSettings();
-        }
-        this.updateTimePressureFeedback();
+    // Pause Resume Overlay Listener
+    const pauseResumeOverlay = document.getElementById("pauseResumeOverlay");
+    if (pauseResumeOverlay) {
+      pauseResumeOverlay.addEventListener("click", () => {
+        this.hideResumeOverlayAndContinue();
       });
     }
 
@@ -1675,6 +1866,16 @@ class QuizEngine {
           this.closeSettingsModal();
         }
         return;
+      }
+
+      // Handle active Pause Overlay (Click/Space/Enter/Esc to continue)
+      const pauseOverlay = document.getElementById("pauseResumeOverlay");
+      if (pauseOverlay && pauseOverlay.style.display !== "none") {
+        if (e.key === " " || e.key === "Enter" || e.key === "Escape") {
+          e.preventDefault();
+          this.hideResumeOverlayAndContinue();
+          return;
+        }
       }
 
       // Ignore if typing inside textarea or inputs

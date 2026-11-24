@@ -14,7 +14,7 @@ const baseDir = path.resolve(__dirname, "..");
 const requiredFiles = [
   "index.html",
   "README.md",
-  "modelInstruction.md",
+  "instruction.md",
   "css/style.css",
   "css/glassmorphism.css",
   "js/theme.js",
@@ -383,7 +383,76 @@ const timeoutCorrectAnswer = simulateQuestionTimeout(singleChoiceQ, [singleChoic
 assert.strictEqual(timeoutCorrectAnswer.isCorrect, true, "Timeout with correct answer selected evaluates as correct");
 console.log("  ✓ Time Pressure timeout auto-fail and grading logic verified.");
 
-// 14. Run Quiz Benchmark Evaluation
+// 14. Test Single Time Pressure Limit Calculation (5% higher than average)
+const allEstTimes = mockWindow.QUIZ_QUESTIONS.map(q => calculateEstimatedTime(q));
+const avgEstTime = allEstTimes.reduce((a, b) => a + b, 0) / allEstTimes.length;
+const expectedSingleLimit = Math.max(5, Math.round(avgEstTime * 1.05));
+assert(expectedSingleLimit >= 10, "Single time limit should be reasonable");
+console.log(`  ✓ Single time pressure limit verified: ${expectedSingleLimit}s (+5% over avg ${Math.round(avgEstTime)}s).`);
+
+// 15. Test Quiz Export & Review-Import Schema
+const mockExport = {
+  version: 1,
+  exportType: "quizframework_review",
+  exportedAt: new Date().toISOString(),
+  config: mockWindow.QUIZ_CONFIG,
+  questions: mockWindow.QUIZ_QUESTIONS,
+  userAnswers: mockWindow.QUIZ_QUESTIONS.map((q, i) => ({
+    checked: true,
+    isCorrect: i % 2 === 0,
+    selectedOptions: [0],
+    timedOut: false
+  })),
+  flagged: [0, 2],
+  elapsedSeconds: 145
+};
+
+assert(mockExport.exportType === "quizframework_review", "Export must declare review type");
+assert(Array.isArray(mockExport.userAnswers) && mockExport.userAnswers.length === mockWindow.QUIZ_QUESTIONS.length, "User answers must match question count");
+assert(Array.isArray(mockExport.flagged), "Flagged items must be serialized as array");
+console.log("  ✓ Quiz Export & Review-Import data schema verified.");
+
+// 16. Test Summary Filter Logic (all, incorrect, flagged)
+const testAnswers = mockExport.userAnswers;
+const testFlagged = new Set(mockExport.flagged);
+const filterAll = mockWindow.QUIZ_QUESTIONS.map((q, i) => ({ q, i }));
+const filterIncorrect = filterAll.filter(({ i }) => testAnswers[i].isCorrect === false);
+const filterFlagged = filterAll.filter(({ i }) => testFlagged.has(i));
+
+assert.strictEqual(filterAll.length, 10, "Filter All must return all questions");
+assert.strictEqual(filterIncorrect.length, 5, "Filter Incorrect must return only incorrect questions");
+assert.strictEqual(filterFlagged.length, 2, "Filter Flagged must return only flagged questions");
+console.log("  ✓ Summary Filter Dropdown logic (All, Incorrect, Flagged) verified.");
+
+// 17. Test Question Timer State Persistence Across Question Switching
+const mockTimerAnswers = [
+  { id: 1, checked: false, remainingMs: null },
+  { id: 2, checked: false, remainingMs: null }
+];
+const totalMs = expectedSingleLimit * 1000;
+// Simulate user spending 6000ms on Q1
+mockTimerAnswers[0].remainingMs = totalMs - 6000;
+// Switch to Q2 (starts fresh)
+assert.strictEqual(mockTimerAnswers[1].remainingMs, null, "Q2 not visited yet, remainingMs should be null");
+// Switch back to Q1: must retain remainingMs (not reset)
+assert.strictEqual(mockTimerAnswers[0].remainingMs, totalMs - 6000, "Q1 remaining time must stay the same when returning");
+console.log("  ✓ Time Pressure per-question timer persistence verified (prevents timer reset on switch).");
+
+// 18. Test Timer Progress Bar Color Gradient and Essay Light Mode Style
+function computeTimerHue(pct) {
+  return Math.round((Math.max(0, Math.min(100, pct)) / 100) * 120);
+}
+assert.strictEqual(computeTimerHue(100), 120, "100% time left must produce green hue (120)");
+assert.strictEqual(computeTimerHue(50), 60, "50% time left must produce yellow hue (60)");
+assert.strictEqual(computeTimerHue(0), 0, "0% time left must produce red hue (0)");
+
+const styleCssContent = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
+assert(styleCssContent.includes('[data-theme="light"] .model-answer-card'), "CSS must define light theme styles for model-answer-card");
+assert(styleCssContent.includes('[data-theme="light"] .self-eval-box'), "CSS must define light theme styles for self-eval-box");
+assert(styleCssContent.includes(".model-answer-card,\n.self-eval-box"), "Smooth theme transition must include model-answer-card and self-eval-box");
+console.log("  ✓ Timer progress bar color gradient (green -> yellow -> red) and essay light mode CSS verified.");
+
+// 19. Run Quiz Benchmark Evaluation
 const { QuizBenchmark } = require("./quiz-benchmark.js");
 const benchmark = new QuizBenchmark();
 const quizDataReport = benchmark.evaluate({

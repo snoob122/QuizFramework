@@ -1,5 +1,5 @@
 # AI Model Instruction & Quiz Generation Specification
-`modelInstruction.md` — Plug-and-Play AI System Prompt for **QuizFramework**
+`instruction.md` — Plug-and-Play AI System Prompt for **QuizFramework**
 
 ---
 
@@ -260,17 +260,17 @@ window.QUIZ_QUESTIONS = [
 ## 5. Copy-Paste Prompt Templates for Users
 
 ### Quick Prompt (Guaranteed to bypass Gemini native interactive quiz):
-When using Gemini web/mobile app, attach your study material and `modelInstruction.md`, then send this prompt:
+When using Gemini web/mobile app, attach your study material and `instruction.md`, then send this prompt:
 
 ```text
 Generate QuizFramework JSON code block only (do NOT use the Gemini interactive quiz tool):
 Create [30] questions based on the attached files.
-Format: Output STRICTLY as a single pure JSON code block matching the QuizFramework schema in modelInstruction.md.
+Format: Output STRICTLY as a single pure JSON code block matching the QuizFramework schema in instruction.md.
 ```
 
 ### Master Comprehensive Prompt:
 ```text
-Please act as the QuizFramework Assessment Generator based on the instructions in modelInstruction.md.
+Please act as the QuizFramework Assessment Generator based on the instructions in instruction.md.
 
 CRITICAL INSTRUCTION: Output STRICTLY as a raw JSON code block (```json ... ```). DO NOT trigger or invoke any built-in interactive quiz widgets, extensions, or flashcard tools.
 

@@ -59,7 +59,6 @@
             </svg>
             <span class="sidebar-title">Danh sách câu hỏi</span>
           </div>
-          <span class="glass-tag tag-violet" id="quizCategory">Demo</span>
         </div>
 
         <div class="sidebar-metrics-panel">
@@ -119,15 +118,6 @@
             <span id="timerDisplay">00:00</span>
           </div>
 
-          <!-- Question Countdown Badge (Time Pressure Mode) -->
-          <div class="glass-tag tag-rose" id="topbarQuestionTimerBadge" style="display: none;" title="Thời gian còn lại cho câu hỏi">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 14 10"></polyline>
-            </svg>
-            <span id="topbarQuestionTimerDisplay">20s</span>
-          </div>
-
           <a href="index.html" class="btn-glass" style="text-decoration: none;" title="Chuyển sang Đề mẫu AI Mastery">
             <span style="font-size: 0.85rem;">Đề Mẫu AI</span>
           </a>
@@ -184,7 +174,7 @@
 ]'></textarea>
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
           <span style="font-size: 0.78rem; color: var(--text-muted);">
-            Mẹo: Nhấn <strong>Enter</strong> hoặc <strong>Phím cách</strong> để nạp đề. Xem <strong>modelInstruction.md</strong> để biết cấu trúc.
+            Mẹo: Nhấn <strong>Enter</strong> hoặc <strong>Phím cách</strong> để nạp đề. Xem <strong>instruction.md</strong> để biết cấu trúc.
           </span>
           <button type="button" class="btn-neon-lime" id="submitImportBtn" title="Nạp Đề & Bắt Đầu (Nhấn Enter hoặc Space)">
             <span>Nạp Đề & Bắt Đầu</span>
@@ -283,6 +273,12 @@
                     style="width: 72px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--glass-border-subtle); background: var(--glass-bg-pill); color: var(--text-primary); font-weight: 700; text-align: center; font-size: 0.88rem;"
                   >
                   <span style="font-size: 0.82rem; color: var(--text-secondary);">giây</span>
+                  <button type="button" class="btn-glass" id="resetTimePressureBtn" title="Đặt lại về thời gian mặc định" aria-label="Đặt lại về thời gian mặc định" style="padding: 6px 8px; min-width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="1 4 1 10 7 10"></polyline>
+                      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                    </svg>
+                  </button>
                 </div>
               </div>
               <div id="timePressureFeedback" style="margin-top: 6px; font-size: 0.78rem; line-height: 1.4;"></div>
@@ -295,6 +291,24 @@
         </div>
 
       </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--glass-border-subtle);">
+        <button type="button" class="btn-glass" id="cancelSettingsBtn" style="padding: 8px 16px;">Huỷ</button>
+        <button type="button" class="btn-neon-lime" id="applySettingsBtn" style="padding: 8px 22px; font-weight: 700;">Áp dụng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resume Pause Overlay for Time Pressure Mode -->
+  <div class="pause-overlay" id="pauseResumeOverlay" style="display: none;" aria-label="Đang tạm dừng - Nhấp để tiếp tục">
+    <div class="pause-card glass-panel-elevated">
+      <div class="pause-icon-pulse">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <polygon points="6 4 20 12 6 20 6 4"></polygon>
+        </svg>
+      </div>
+      <div class="pause-title" id="pauseTitle">Nhấp để Tiếp Tục</div>
+      <div class="pause-subtitle" id="pauseSubtitle">Đồng hồ sẽ tiếp tục đếm ngược</div>
     </div>
   </div>
 

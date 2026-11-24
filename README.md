@@ -12,7 +12,7 @@ An ultra-modern, glassmorphic quiz platform engineered for plug-and-play AI gene
 ## 🌟 Highlights
 
 - 🚀 **Zero Build Step & Offline Ready:** Built with standard HTML5, CSS3, and vanilla ES6 JavaScript. Simply double-click `index.html` to run anywhere in any browser.
-- 🤖 **AI-Ready & Plug-and-Play:** Turn lecture slides, PDFs, or notes into full interactive quizzes in seconds with ChatGPT, Claude, or Gemini using [`modelInstruction.md`](modelInstruction.md).
+- 🤖 **AI-Ready & Plug-and-Play:** Turn lecture slides, PDFs, or notes into full interactive quizzes in seconds with ChatGPT, Claude, or Gemini using [`instruction.md`](instruction.md).
 - 📐 **Native LaTeX Math (KaTeX):** High-performance native math typesetting for inline (`$E = mc^2$`) and display (`$$\sum_{i=1}^n x_i$$`) formulas across question stems, options, and explanations.
 - 💎 **Modern Glassmorphic UI:** Translucent frosted glass panels, ambient glowing backdrop orbs, fluid animations, and clean Dark/Light theme toggling.
 - 🎯 **Rich Question Formats:** Native support for Single Choice, Multi-Select, True/False statement clusters, and self-graded Essay questions with rubric checklists.
@@ -67,18 +67,18 @@ python3 -m http.server 8000
 To turn any lecture slide, textbook chapter, or PDF into a QuizFramework test:
 
 1. Open your favorite AI chatbot (**Gemini, ChatGPT, or Claude**).
-2. Attach your study material along with [`modelInstruction.md`](modelInstruction.md).
+2. Attach your study material along with [`instruction.md`](instruction.md).
 3. Send this quick prompt:
 
 ```text
 Generate QuizFramework JSON code block only (do NOT use interactive quiz tool):
 Create 20 questions from the attached material.
-Format: Output STRICTLY as a single pure JSON code block matching the modelInstruction.md schema.
+Format: Output STRICTLY as a single pure JSON code block matching the instruction.md schema.
 ```
 
 4. In QuizFramework, click **"Import"** in the top bar, paste the JSON, and press **Enter** to start!
 
-> 💡 *See [`modelInstruction.md`](modelInstruction.md) for the complete specification, evaluation rubrics, and automated benchmark tools.*
+> 💡 *See [`instruction.md`](instruction.md) for the complete specification, evaluation rubrics, and automated benchmark tools.*
 
 ---
 
@@ -103,7 +103,7 @@ Speed through your quizzes without touching the mouse:
 QuizFramework/
 ├── index.html            # Main web application shell
 ├── README.md             # Project guide & quickstart
-├── modelInstruction.md   # AI generation prompt & schema specification
+├── instruction.md        # AI generation prompt & schema specification
 ├── css/
 │   ├── glassmorphism.css # Translucent glass utilities & ambient effects
 │   └── style.css         # Responsive layout & theme design tokens
