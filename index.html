@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizFramework - Interactive AI-Ready Quiz Webpage</title>
+  
+  <!-- MANDATORY: Declare support for both light and dark themes (modern-web-guidance) -->
+  <meta name="color-scheme" content="light dark">
+  
+  <!-- Inline FOUC prevention script -->
+  <script>
+    try {
+      const savedScheme = localStorage.getItem("color-scheme");
+      if (savedScheme) {
+        document.querySelector('meta[name="color-scheme"]').content = savedScheme;
+        document.documentElement.setAttribute("data-theme", savedScheme);
+      }
+    } catch (e) {}
+  </script>
+
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- KaTeX Math Typesetting -->
+  <link rel="stylesheet" href="lib/katex/katex.min.css">
+
+  <!-- Core Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Ambient glowing backdrop orbs -->
+  <div class="ambient-glow" aria-hidden="true">
+    <div class="glow-orb glow-orb-1"></div>
+    <div class="glow-orb glow-orb-2"></div>
+    <div class="glow-orb glow-orb-3"></div>
+  </div>
+
+  <div class="app-layout">
+    
+    <!-- Left Column: Standalone Collapse Button + Sidebar Directly Below -->
+    <div class="sidebar-column" id="sidebarColumn">
+      <div class="sidebar-top-bar">
+        <button type="button" class="btn-glass standalone-collapse-btn" id="sidebarToggleBtn" aria-label="Toggle Navigation Sidebar" title="Toggle Sidebar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Expandable / Collapsible Sidebar Below Button -->
+      <aside class="sidebar" id="appSidebar" aria-label="Question Navigation Sidebar">
+        <div class="sidebar-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--neon-cyan);">
+              <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+              <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+              <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+              <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+            </svg>
+            <span class="sidebar-title">Question Grid</span>
+          </div>
+          <span class="glass-tag tag-violet" id="quizCategory">Overview</span>
+        </div>
+
+        <!-- Real-time Stats Cards (Completed & Flagged) -->
+        <div class="sidebar-metrics-panel">
+          <div class="metric-pill">
+            <span class="metric-val" id="sidebarDoneVal">0/7</span>
+            <span class="metric-name">Completed</span>
+          </div>
+          <div class="metric-pill">
+            <span class="metric-val" id="sidebarFlagVal" style="color: var(--neon-amber);">0</span>
+            <span class="metric-name">Flagged</span>
+          </div>
+        </div>
+
+        <!-- Numbered Question Selector Grid -->
+        <div class="sidebar-questions-section">
+          <div class="question-grid-title">
+            <span>Jump to Question</span>
+          </div>
+          <div class="question-grid" id="sidebarQuestionGrid">
+            <!-- Dynamically populated by quiz-engine.js -->
+          </div>
+        </div>
+
+        <!-- Sidebar Bottom Finish Button -->
+        <div class="sidebar-footer">
+          <button type="button" class="btn-glass sidebar-summary-btn" onclick="window.quizApp.showSummary()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <span>Summary & Results</span>
+          </button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Right Column: Main Stage with Floating Topbar Capsule + Content Area -->
+    <div class="main-stage">
+      <header class="topbar">
+        <div class="brand-section">
+          <div class="brand-title">
+            <h1 id="quizTitle">QuizFramework</h1>
+          </div>
+        </div>
+
+        <!-- Center Progress Track -->
+        <div class="topbar-progress-box">
+          <span class="glass-tag tag-cyan" id="qCountBadge">1 of 7</span>
+          <div class="progress-track" aria-label="Quiz completion progress">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <span class="progress-label" id="progressLabel">0 / 7 Answered</span>
+        </div>
+
+        <!-- Right Actions Bar -->
+        <div class="topbar-actions">
+          <!-- Live Timer Badge -->
+          <div class="glass-tag tag-lime" title="Elapsed Time">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span id="timerDisplay">00:00</span>
+          </div>
+
+          <!-- Question Countdown Badge (Time Pressure Mode) -->
+          <div class="glass-tag tag-rose" id="topbarQuestionTimerBadge" style="display: none;" title="Question Time Remaining">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 14 10"></polyline>
+            </svg>
+            <span id="topbarQuestionTimerDisplay">20s</span>
+          </div>
+
+          <!-- Import / Paste AI Quiz Button -->
+          <button type="button" class="btn-glass" id="topImportBtn" title="Import JSON Quiz generated by AI">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span style="font-size: 0.85rem;">Import</span>
+          </button>
+
+          <!-- Dark / Light Mode Toggle Button (Icon Only) -->
+          <button type="button" class="btn-glass icon-btn-round" id="themeToggleBtn" aria-label="Toggle Color Theme" title="Toggle Dark/Light Mode">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+
+          <!-- Settings Button (Top Right) -->
+          <button type="button" class="btn-glass icon-btn-round" id="settingsToggleBtn" aria-label="Open Settings" title="Settings">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Question & Results Viewport -->
+      <main class="main-content" id="workspaceArea">
+        <!-- Dynamically rendered by quiz-engine.js -->
+      </main>
+    </div>
+
+  </div>
+
+  <!-- Modal for Importing AI Quiz (.json / .js) -->
+  <div class="modal-overlay" id="importModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-card glass-panel-elevated">
+      <div class="modal-header">
+        <h3 id="modalTitle">📥 Import Custom AI Quiz</h3>
+        <button type="button" class="btn-glass" id="closeModalBtn" aria-label="Close Modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin: 0;">
+            Upload your AI-generated quiz file or paste JSON/JS code below:
+          </p>
+          <label class="btn-glass" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; padding: 6px 14px; border-radius: 999px;">
+            📁 Upload .json / .js File
+            <input type="file" id="quizFileInput" accept=".json,.js" style="display: none;">
+          </label>
+        </div>
+        <textarea id="jsonInputArea" class="json-input-area" placeholder='[
+  {
+    "id": 1,
+    "type": "single",
+    "question": "What is 2 + 2?",
+    "options": ["3", "4", "5"],
+    "correct": 1,
+    "explanation": "2 + 2 equals 4."
+  }
+]'></textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <span style="font-size: 0.78rem; color: var(--text-muted);">
+            Tip: Press <strong>Enter</strong> or <strong>Space</strong> to load. See <strong>modelInstruction.md</strong> for the schema.
+          </span>
+          <button type="button" class="btn-neon-lime" id="submitImportBtn" title="Load & Start Quiz (Press Enter or Space)">
+            <span>Load & Start Quiz</span>
+            <span class="keybind-pill" style="font-size: 0.72rem; padding: 2px 7px; background: rgba(0, 0, 0, 0.25); border-radius: 6px; margin-left: 6px; font-weight: 700; letter-spacing: 0.5px;">↵ Enter / Space</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Settings -->
+  <div class="modal-overlay" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+    <div class="modal-card glass-panel-elevated" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 id="settingsModalTitle">Settings</h3>
+        <button type="button" class="btn-glass" id="closeSettingsModalBtn" aria-label="Close Settings">✕</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+        
+        <!-- Setting 1: Theme Switcher -->
+        <div class="settings-item-card">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Dark / Light Theme</div>
+            <div class="settings-item-desc">Toggle color scheme between dark neon glass and light crystal.</div>
+          </div>
+          <button type="button" class="btn-glass" id="settingsThemeBtn" style="padding: 8px 14px; font-size: 0.85rem;">
+            <span>Theme</span>
+          </button>
+        </div>
+
+        <!-- Setting 2: Question Type & Hints -->
+        <div class="settings-item-card">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Show Question Type & Hints</div>
+            <div class="settings-item-desc">
+              Display question format tags (Single/Multi-choice) and hints indicating answer counts.
+            </div>
+          </div>
+          <label class="switch-control" title="Toggle Question Type Badges & Hints">
+            <input type="checkbox" id="settingShowType" checked>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- Setting 3: Instant Answer Checking -->
+        <div class="settings-item-card">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Instant Answer Checking</div>
+            <div class="settings-item-desc">
+              Check correctness immediately upon choosing an answer (hides the check button).
+            </div>
+          </div>
+          <label class="switch-control" title="Toggle Instant Answer Checking">
+            <input type="checkbox" id="settingInstantCheck">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- Setting 4: Zen Mode -->
+        <div class="settings-item-card zen-card-highlight">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Zen Mode</div>
+            <div class="settings-item-desc">
+              Simplify the UI. Hides sidebars, banners, and non-essential buttons to focus purely on learning.
+            </div>
+          </div>
+          <label class="switch-control" title="Toggle Zen Mode">
+            <input type="checkbox" id="settingZenMode">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- Setting 5: Time Pressure -->
+        <div class="settings-item-card time-pressure-card">
+          <div class="settings-item-info" style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="settings-item-title">Time Pressure</div>
+              <span class="glass-tag tag-rose" style="font-size: 0.7rem; padding: 2px 6px;">Challenge</span>
+            </div>
+            <div class="settings-item-desc">
+              Fixed countdown per question. Unanswered or incorrect questions are marked wrong when time expires. Enabling or disabling resets the quiz.
+            </div>
+
+            <div id="timePressureConfigBox" class="time-pressure-config-box" style="margin-top: 10px; display: none;">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <label for="settingTimePressureSeconds" style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">
+                  Seconds per question:
+                </label>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <input 
+                    type="number" 
+                    id="settingTimePressureSeconds" 
+                    min="1" 
+                    step="1" 
+                    value="20"
+                    style="width: 72px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--glass-border-subtle); background: var(--glass-bg-pill); color: var(--text-primary); font-weight: 700; text-align: center; font-size: 0.88rem;"
+                  >
+                  <span style="font-size: 0.82rem; color: var(--text-secondary);">sec</span>
+                </div>
+              </div>
+              <div id="timePressureFeedback" style="margin-top: 6px; font-size: 0.78rem; line-height: 1.4;">
+                <!-- Dynamic feedback -->
+              </div>
+            </div>
+          </div>
+          <label class="switch-control" title="Toggle Time Pressure">
+            <input type="checkbox" id="settingTimePressure">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- KaTeX Math Libraries -->
+  <script src="lib/katex/katex.min.js"></script>
+  <script src="lib/katex/contrib/auto-render.min.js"></script>
+
+  <!-- Scripts -->
+  <script src="js/theme.js"></script>
+  <script src="js/quiz-data.js"></script>
+  <script src="js/quiz-engine.js"></script>
+</body>
+</html>

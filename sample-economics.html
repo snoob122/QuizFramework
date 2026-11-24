@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizFramework</title>
+  
+  <meta name="color-scheme" content="light dark">
+  <script>
+    try {
+      const savedScheme = localStorage.getItem("color-scheme");
+      if (savedScheme) {
+        document.querySelector('meta[name="color-scheme"]').content = savedScheme;
+        document.documentElement.setAttribute("data-theme", savedScheme);
+      }
+    } catch (e) {}
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- KaTeX Math Typesetting -->
+  <link rel="stylesheet" href="lib/katex/katex.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="ambient-glow" aria-hidden="true">
+    <div class="glow-orb glow-orb-1"></div>
+    <div class="glow-orb glow-orb-2"></div>
+    <div class="glow-orb glow-orb-3"></div>
+  </div>
+
+  <div class="app-layout">
+    
+    <!-- Left Column: Standalone Collapse Button + Sidebar Directly Below -->
+    <div class="sidebar-column" id="sidebarColumn">
+      <div class="sidebar-top-bar">
+        <button type="button" class="btn-glass standalone-collapse-btn" id="sidebarToggleBtn" aria-label="Toggle Navigation Sidebar" title="Bật/Tắt Menu Câu Hỏi">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+            <!-- Expandable / Collapsible Sidebar Below Button -->
+      <aside class="sidebar" id="appSidebar" aria-label="Bảng điều hướng câu hỏi">
+        <div class="sidebar-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--neon-cyan);">
+              <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+              <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+              <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+              <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+            </svg>
+            <span class="sidebar-title">Danh sách câu hỏi</span>
+          </div>
+          <span class="glass-tag tag-violet" id="quizCategory">Demo</span>
+        </div>
+
+        <div class="sidebar-metrics-panel">
+          <div class="metric-pill">
+            <span class="metric-val" id="sidebarDoneVal">0/6</span>
+            <span class="metric-name">Đã hoàn thành</span>
+          </div>
+          <div class="metric-pill">
+            <span class="metric-val" id="sidebarFlagVal" style="color: var(--neon-amber);">0</span>
+            <span class="metric-name">Đánh dấu</span>
+          </div>
+        </div>
+
+        <div class="sidebar-questions-section">
+          <div class="question-grid-title">
+            <span>Chọn câu hỏi</span>
+          </div>
+          <div class="question-grid" id="sidebarQuestionGrid"></div>
+        </div>
+
+        <div class="sidebar-footer">
+          <button type="button" class="btn-glass sidebar-summary-btn" onclick="window.quizApp.showSummary()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <span>Bảng Điểm & Tổng Kết</span>
+          </button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Right Column: Main Stage with Floating Topbar Capsule + Content Area -->
+    <div class="main-stage">
+      <header class="topbar">
+        <div class="brand-section">
+          <div class="brand-title">
+            <h1 id="quizTitle">Demo</h1>
+          </div>
+        </div>
+
+        <div class="topbar-progress-box">
+          <span class="glass-tag tag-cyan" id="qCountBadge">1 of 6</span>
+          <div class="progress-track" aria-label="Tiến độ làm bài">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <span class="progress-label" id="progressLabel">0 / 6 Đã làm</span>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="glass-tag tag-lime" title="Thời gian làm bài">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span id="timerDisplay">00:00</span>
+          </div>
+
+          <!-- Question Countdown Badge (Time Pressure Mode) -->
+          <div class="glass-tag tag-rose" id="topbarQuestionTimerBadge" style="display: none;" title="Thời gian còn lại cho câu hỏi">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 14 10"></polyline>
+            </svg>
+            <span id="topbarQuestionTimerDisplay">20s</span>
+          </div>
+
+          <a href="index.html" class="btn-glass" style="text-decoration: none;" title="Chuyển sang Đề mẫu AI Mastery">
+            <span style="font-size: 0.85rem;">Đề Mẫu AI</span>
+          </a>
+
+          <button type="button" class="btn-glass" id="topImportBtn" title="Nhập đề thi JSON mới">
+            <span style="font-size: 0.85rem;">Import</span>
+          </button>
+
+          <button type="button" class="btn-glass icon-btn-round" id="themeToggleBtn" aria-label="Đổi giao diện Sáng/Tối" title="Chuyển Giao Diện Sáng/Tối">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+
+          <button type="button" class="btn-glass icon-btn-round" id="settingsToggleBtn" aria-label="Cài đặt" title="Cài đặt & Giao diện">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="main-content" id="workspaceArea"></main>
+    </div>
+
+  </div>
+
+  <div class="modal-overlay" id="importModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-card glass-panel-elevated">
+      <div class="modal-header">
+        <h3 id="modalTitle">📥 Nhập Đề Thi Mới (.json / .js)</h3>
+        <button type="button" class="btn-glass" id="closeModalBtn" aria-label="Đóng">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin: 0;">
+            Tải tệp đề thi hoặc dán nội dung JSON/JS được tạo bởi mô hình AI vào đây:
+          </p>
+          <label class="btn-glass" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; padding: 6px 14px; border-radius: 999px;">
+            📁 Chọn Tệp .json / .js
+            <input type="file" id="quizFileInput" accept=".json,.js" style="display: none;">
+          </label>
+        </div>
+        <textarea id="jsonInputArea" class="json-input-area" placeholder='[
+  {
+    "id": 1,
+    "type": "single",
+    "question": "Câu hỏi mẫu?",
+    "options": ["A", "B", "C"],
+    "correct": 0,
+    "explanation": "Giải thích chi tiết."
+  }
+]'></textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <span style="font-size: 0.78rem; color: var(--text-muted);">
+            Mẹo: Nhấn <strong>Enter</strong> hoặc <strong>Phím cách</strong> để nạp đề. Xem <strong>modelInstruction.md</strong> để biết cấu trúc.
+          </span>
+          <button type="button" class="btn-neon-lime" id="submitImportBtn" title="Nạp Đề & Bắt Đầu (Nhấn Enter hoặc Space)">
+            <span>Nạp Đề & Bắt Đầu</span>
+            <span class="keybind-pill" style="font-size: 0.72rem; padding: 2px 7px; background: rgba(0, 0, 0, 0.25); border-radius: 6px; margin-left: 6px; font-weight: 700; letter-spacing: 0.5px;">↵ Enter / Space</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Settings -->
+  <div class="modal-overlay" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+    <div class="modal-card glass-panel-elevated" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 id="settingsModalTitle">Cài Đặt & Tuỳ Chọn</h3>
+        <button type="button" class="btn-glass" id="closeSettingsModalBtn" aria-label="Đóng">✕</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+        
+        <!-- Setting 1: Theme Switcher -->
+        <div class="settings-item-card">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Giao Diện Sáng / Tối</div>
+            <div class="settings-item-desc">Chuyển đổi giữa chế độ Neon Tối và Pha Lê Sáng.</div>
+          </div>
+          <button type="button" class="btn-glass" id="settingsThemeBtn" style="padding: 8px 14px; font-size: 0.85rem;">
+            <span>Chuyển Giao Diện</span>
+          </button>
+        </div>
+
+        <!-- Setting 2: Question Type & Hints -->
+        <div class="settings-item-card">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Hiện Loại Câu Hỏi & Gợi Ý</div>
+            <div class="settings-item-desc">
+              Hiển thị nhãn định dạng câu hỏi và gợi ý số lượng đáp án cần chọn.
+            </div>
+          </div>
+          <label class="switch-control" title="Bật/Tắt Nhãn Định Dạng & Gợi Ý">
+            <input type="checkbox" id="settingShowType" checked>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- Setting 3: Instant Answer Checking -->
+        <div class="settings-item-card">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Kiểm Tra Đáp Án Tức Thì</div>
+            <div class="settings-item-desc">
+              Tự động kiểm tra ngay khi chọn đáp án (ẩn nút kiểm tra).
+            </div>
+          </div>
+          <label class="switch-control" title="Bật/Tắt Kiểm Tra Tức Thì">
+            <input type="checkbox" id="settingInstantCheck">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- Setting 4: Zen Mode -->
+        <div class="settings-item-card zen-card-highlight">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Chế Độ Tập Trung (Zen Mode)</div>
+            <div class="settings-item-desc">
+              Ẩn thanh bên, thanh tiến độ và các nút không cần thiết để tập trung ôn tập.
+            </div>
+          </div>
+          <label class="switch-control" title="Bật/Tắt Chế Độ Tập Trung">
+            <input type="checkbox" id="settingZenMode">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- Setting 5: Time Pressure -->
+        <div class="settings-item-card time-pressure-card">
+          <div class="settings-item-info" style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="settings-item-title">Áp Lực Thời Gian (Time Pressure)</div>
+              <span class="glass-tag tag-rose" style="font-size: 0.7rem; padding: 2px 6px;">Thử thách</span>
+            </div>
+            <div class="settings-item-desc">
+              Giới hạn thời gian cố định cho mỗi câu hỏi. Hết giờ nếu chưa chọn đúng sẽ tự động tính sai. Bật hoặc tắt sẽ đặt lại bài thi từ đầu.
+            </div>
+
+            <div id="timePressureConfigBox" class="time-pressure-config-box" style="margin-top: 10px; display: none;">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <label for="settingTimePressureSeconds" style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">
+                  Số giây mỗi câu:
+                </label>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <input 
+                    type="number" 
+                    id="settingTimePressureSeconds" 
+                    min="1" 
+                    step="1" 
+                    value="20"
+                    style="width: 72px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--glass-border-subtle); background: var(--glass-bg-pill); color: var(--text-primary); font-weight: 700; text-align: center; font-size: 0.88rem;"
+                  >
+                  <span style="font-size: 0.82rem; color: var(--text-secondary);">giây</span>
+                </div>
+              </div>
+              <div id="timePressureFeedback" style="margin-top: 6px; font-size: 0.78rem; line-height: 1.4;"></div>
+            </div>
+          </div>
+          <label class="switch-control" title="Bật/Tắt Áp Lực Thời Gian">
+            <input type="checkbox" id="settingTimePressure">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- KaTeX Math Libraries -->
+  <script src="lib/katex/katex.min.js"></script>
+  <script src="lib/katex/contrib/auto-render.min.js"></script>
+
+  <script src="js/theme.js"></script>
+  <!-- Load Economics dataset for this demo page -->
+  <script src="js/sample-economics-data.js"></script>
+  <script src="js/quiz-engine.js"></script>
+</body>
+</html>
