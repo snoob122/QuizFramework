@@ -13,7 +13,7 @@ console.log("🧪 Starting QuizFramework Test Suite...\n");
 const baseDir = path.resolve(__dirname, "..");
 const requiredFiles = [
   "index.html",
-  "INSTRUCTION.md",
+  "README.md",
   "modelInstruction.md",
   "css/style.css",
   "css/glassmorphism.css",
